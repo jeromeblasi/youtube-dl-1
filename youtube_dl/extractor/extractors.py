@@ -117,6 +117,11 @@ from .bleacherreport import (
     BleacherReportIE,
     BleacherReportCMSIE,
 )
+from .blendercloud import (
+
+    BlenderCloudPlaylistIE)
+# BlenderCloudIE)
+
 from .blinkx import BlinkxIE
 from .bloomberg import BloombergIE
 from .bokecc import BokeCCIE
