@@ -119,8 +119,8 @@ from .bleacherreport import (
 )
 from .blendercloud import (
 
-    BlenderCloudPlaylistIE)
-# BlenderCloudIE)
+    BlenderCloudPlaylistIE,
+    BlenderCloudIE)
 
 from .blinkx import BlinkxIE
 from .bloomberg import BloombergIE

@@ -11,15 +11,15 @@ class BlenderCloudBaseIE(InfoExtractor):
     #
     # The data we want for any given node ID can be fetched at:
     url_node = "https://cloud.blender.org/nodes/%s/view"
+    # The data we want for root course can be fetched at :
     url = "https://cloud.blender.org/p/%s/browse/nodes"
-
     # TODO: Add authentication scheme for subscriber-only videos.
+    #
     #
     # This will require the use of a (paid) Blender ID token available from:
     # https://store.blender.org/product/membership/
     #
-    # For now - ignore any subscriber-only videos and just grab the public ones.
-
+    # For now - ignore any subscriber-only videos and just grab the public ones or use --cookies option for authentication
     def notify_for(self, node_id, notify_type):
         notify_message = None
         if notify_type == 'subscribers_only':
@@ -34,10 +34,8 @@ class BlenderCloudBaseIE(InfoExtractor):
         if node_id == "browse":
             return self._html_search_regex(r'<h4 class=\"p-4\">(.*?)</h4>', source, 'title').strip()
         else:
-            print(self._html_search_regex(
-                r'<h4\s*class=\"pt-4 mb-3\">(.*?)</h4>', source, 'title').strip())
-        return self._html_search_regex(
-            r'<h4\s*class=\"pt-4 mb-3\">(.*?)</h4>', source, 'title').strip()
+            print(self._html_search_regex(r'<h4\s*class=\"pt-4 mb-3\">(.*?)</h4>', source, 'title').strip())
+        return self._html_search_regex(r'<h4\s*class=\"pt-4 mb-3\">(.*?)</h4>', source, 'title').strip()
 
     def get_video_single(self, node_id, source):
         video_title = None
@@ -78,7 +76,6 @@ class BlenderCloudBaseIE(InfoExtractor):
             tag = '<section class="node-preview video">'
         elif check_for == 'playlist':
             tag = '<div id="node-container">'
-            # tag = '<section class="node-preview group">'
         else:
             return False
         return True if tag in source else False
@@ -102,7 +99,7 @@ class BlenderCloudBaseIE(InfoExtractor):
 
 
 class BlenderCloudIE(BlenderCloudBaseIE):
-    _VALID_URL = r'https?://cloud\.blender\.org/[^/]+/(?P<display_id>[0-9a-z-]+)/(?P<node_id>[0-9a-z]+)/[^/]+/?$'
+    _VALID_URL = r'https?://cloud\.blender\.org/[^/]+/(?P<display_id>[0-9a-z-]+)/(?P<node_id>[0-9a-z]+)/?$'
     _TESTS = [
         {
             # Single video
@@ -180,24 +177,22 @@ class BlenderCloudIE(BlenderCloudBaseIE):
     ]
 
     def _real_extract(self, url):
-        # extract a single video, or a playlist of subsection videos
+        # extract a single video, or just one playlist of subsection videos
         mobj = re.match(self._VALID_URL, url)
         node_id = mobj.group('node_id')
         display_id = mobj.group('display_id')
-        if node_id == "browse":
-            webpage = self._download_webpage(self.url % display_id, node_id)
-        else:
-            webpage = self._download_webpage(self.url_node % node_id, node_id)
+        webpage = self._download_webpage(self.url_node % node_id, node_id)
         title = None
         formats = []
+        playlistEntries = []
         if self.is_video(webpage, 'single'):
             title, formats = self.get_video_single(node_id, webpage)
         elif self.is_video(webpage, 'playlist'):
-            entries = self.get_video_playlist(display_id, webpage, node_id)
+            playlistEntries = self.get_video_playlist(display_id, webpage, node_id)
             return self.playlist_result(
-                entries, playlist_id=node_id, playlist_title=self.get_node_title(webpage, node_id))
-        # else:
-        #     self.notify_for(node_id, 'no_video_sources_available')
+                playlistEntries, playlist_id=node_id, playlist_title=self.get_playlist_title(webpage))
+        else:
+            self.notify_for(node_id, 'no_video_sources_available')
         return {
             'id': node_id,
             'display_id': display_id,
@@ -207,22 +202,30 @@ class BlenderCloudIE(BlenderCloudBaseIE):
 
 
 class BlenderCloudPlaylistIE(BlenderCloudBaseIE):
-    _VALID_URL = r'https?://cloud\.blender\.org/[^/]+/(?P<display_id>[0-9a-z-]+)'
+    _VALID_URL = r'https?://cloud\.blender\.org/[^/]+/(?P<display_id>[0-9a-z-]+)/?$'
     _TESTS = [
         {
             # Playlist (complete)
-            'url': 'https://cloud.blender.org/p/blenderella',
+            'url': 'https://cloud.blender.org/p/stylized-character-workflow',
             'info_dict': {
-                'id': 'blenderella',
-                'title': 'Learn Character Modeling — Blender Cloud',
+                'id': 'stylized-character-workflow',
+                'title': 'Browse',
             },
             'playlist': [
                 {
                     'info_dict': {
-                        'id': '56040ecf044a2a00a515adb0',
-                        'display_id': 'blenderella',
+                        'id': '5d3a1a214bc3ff1bb9513d30',
+                        'display_id': 'stylized-character-workflow',
                         'ext': 'mp4',
-                        'title': '10 - Cheek, Jaw, Forehead, Scalp',
+                        'title': 'Introduction',
+                    },
+                },
+                {
+                    'info_dict': {
+                        'id': '5e578b890130b67d1c17b7c4',
+                        'display_id': 'stylized-character-workflow',
+                        'ext': 'mp4',
+                        'title': 'Introduction Update',
                     },
                 },
             ],
@@ -233,7 +236,7 @@ class BlenderCloudPlaylistIE(BlenderCloudBaseIE):
         },
         {
             # Playlist (complete)
-            'url': 'https://cloud.blender.org/p/blender-inside-out/',
+            'url': 'https://cloud.blender.org/p/blender-inside-out/browse/node',
             'info_dict': {
                 'id': 'blender-inside-out',
                 'title': 'From Maya and Max to Blender — Blender Cloud',
@@ -290,23 +293,24 @@ class BlenderCloudPlaylistIE(BlenderCloudBaseIE):
     ]
 
     def _real_extract(self, url):
-        # extract the complete playlist for an entire video section
+        # extract the complete playlist for an entire course video section
         mobj = re.match(self._VALID_URL, url)
         display_id = mobj.group('display_id')
-        webpage = self._download_webpage(url, display_id)
+        webpage = self._download_webpage(self.url % display_id, display_id)
         entries = []
         playlistEntries = []
         for node_id in re.findall(r'data-node_id=\"([0-9a-z]+)\"', webpage):
             webpage_node = self._download_webpage(self.url_node % node_id, node_id)
             if self.is_video(webpage_node, 'single'):
                 title, formats = self.get_video_single(node_id, webpage_node)
+                playlist_title = self.get_playlist_title(webpage)
                 if title is not None:
                     entries.append({
                         'id': node_id,
                         'display_id': display_id,
                         'title': title,
                         'formats': formats,
-                        'playlist_title': None
+                        'playlist_title': playlist_title
                     })
             elif self.is_video(webpage_node, 'playlist'):
                 playlistEntries = (self.get_video_playlist(display_id, webpage_node, node_id))
