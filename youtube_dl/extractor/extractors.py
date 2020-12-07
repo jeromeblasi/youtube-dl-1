@@ -239,6 +239,7 @@ from .contv import CONtvIE
 from .corus import CorusIE
 from .cracked import CrackedIE
 from .crackle import CrackleIE
+from .creatureartteacher import CreatureArtTeacherIE
 from .crooksandliars import CrooksAndLiarsIE
 from .crunchyroll import (
     CrunchyrollIE,
