@@ -38,7 +38,7 @@ class CreatureArtTeacherIE(InfoExtractor):
         webpage = self._download_webpage(url, playlist_id)
         # playlist info
         playlist_lessons_infos = []
-        for playlist_lesson_infos in re.finditer(r'<header class="lesson-title".*\s*.*<h2>.*\s*.*<a.*\s*.*href=\"(?P<lesson_url>.*)\".*\s.*title=\"(?P<lesson_title>.*)\"', webpage):
+        for playlist_lesson_infos in re.finditer(r'<header class=["\']lesson-title["\'].*\s*<h2>.*\s*<a[^>]+href=["\'](?P<lesson_url>[^"\']+)', webpage):
             lesson_url = playlist_lesson_infos.group('lesson_url')
             playlist_lessons_infos.append({
                 'url': lesson_url,
@@ -57,8 +57,7 @@ class CreatureArtTeacherIE(InfoExtractor):
             player_video_url = vimeo_url_unsmuggle
 
             # ID extract from vimeo URL
-            reg = r'\/\/player\.vimeo\.com\/video\/(?P<player_video_id>\d+)'
-            player_video_url_id = self._search_regex(reg, player_video_url, 'player_video_url_id', group='player_video_id').strip()
+            player_video_url_id = self._search_regex(r'\/\/player\.vimeo\.com\/video\/(?P<player_video_id>\d+)', player_video_url, 'player_video_url_id', group='player_video_id').strip()
 
             # Headers referer checking
             headers = std_headers.copy()
@@ -69,12 +68,7 @@ class CreatureArtTeacherIE(InfoExtractor):
             embedded_video_webpage, urlh = self._download_webpage_handle(player_video_url, player_video_url_id, headers=headers)
 
             # config extraction
-            self.report_extraction(player_video_url_id)
-            config_re = [r' = {config:({.+?}),assets:', r'(?:[abc])=({.+?});']
-            config_re.append(r'\bvar\s+r\s*=\s*({.+?})\s*;')
-            config_re.append(r'\bconfig\s*=\s*({.+?})\s*;')
-            config = self._search_regex(config_re, embedded_video_webpage, 'info section',
-                                        flags=re.DOTALL)
+            config = self._search_regex(r'\bconfig\s*=\s*({.+?})\s*;', embedded_video_webpage, 'info section')
             config = json.loads(config)
             config = VimeoIE._parse_config(self, config, player_video_url_id)
 
