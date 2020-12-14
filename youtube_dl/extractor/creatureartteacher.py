@@ -48,7 +48,7 @@ class CreatureArtTeacherIE(InfoExtractor):
         lessons_vids_urls = []
 
         for lesson in playlist_lessons_infos:
-            lesson_webpage = self._download_webpage(lesson['url'], playlist_id)
+            lesson_webpage = self._download_webpage(lesson.get('url'), playlist_id)
 
             # Extract url
             vimeo_url = VimeoIE._extract_urls(lesson_url, lesson_webpage)
